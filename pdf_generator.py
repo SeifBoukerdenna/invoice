@@ -1,9 +1,24 @@
+import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib import colors
 from reportlab.lib.units import mm
-from datetime import datetime  # Import datetime module for formatting dates
+from datetime import datetime
 from styles import get_styles
+
+def create_qr_code(data, size):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    img_path = "qr_code.png"
+    img.save(img_path)
+    return img_path
 
 def create_invoice(details):
     pdf = SimpleDocTemplate("joke_invoice.pdf", pagesize=A4, rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
@@ -17,18 +32,21 @@ def create_invoice(details):
 
     # Add company logo
     logo_path = "assets/company_logo.png"
-    logo = Image(logo_path, width=100, height=50)
+    logo = Image(logo_path, width=200, height=150)
     elements.append(logo)
     elements.append(Spacer(1, 12))
 
     # Add company information
-    company_info = Paragraph(f"{details['company_name']}<br />{details['company_address']}<br />{details['company_phone']}<br />{details['company_email']}<br />{details['company_website']}", styles['CompanyInfo'])
+    company_info = Paragraph(f"""
+        <b>{details['company_name']}</b><br/>
+        Registered No: 12345678<br/>
+        VAT No: GB123456789<br/>
+        {details['company_address']}<br/>
+        {details['company_phone']}<br/>
+        {details['company_email']}<br/>
+        {details['company_website']}
+    """, styles['CompanyInfo'])
     elements.append(company_info)
-    elements.append(Spacer(1, 12))
-
-    # Add the title
-    title = Paragraph("INVOICE", styles['InvoiceTitle'])
-    elements.append(title)
     elements.append(Spacer(1, 12))
 
     # Add recipient and date details
@@ -62,13 +80,13 @@ def create_invoice(details):
     # Create and style the table
     table = Table(table_data, colWidths=[90*mm, 20*mm, 25*mm, 25*mm, 25*mm, 25*mm])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.purple),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 10),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
         ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
         ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
@@ -87,8 +105,30 @@ def create_invoice(details):
     subtotal = Paragraph(f"<b>Subtotal:</b> {details['subtotal']} kisses", styles['TotalDue'])
     tax_due = Paragraph(f"<b>Tax Due:</b> {details['tax_due']} kisses", styles['TotalDue'])
     total_due = Paragraph(f"<b>Total Due:</b> {details['total_due']} kisses", styles['TotalDue'])
-    notes = Paragraph("<b>Notes:</b> Payment accepted in hugs, kisses, and happy moments. Thank you for all the wonderful times we've shared. Here's to many more! 💖", styles['Notes'])
-    elements.extend([subtotal, tax_due, total_due, Spacer(1, 12), notes])
+    elements.extend([subtotal, tax_due, total_due, Spacer(1, 12)])
+
+    # Add payment instructions
+    payment_instructions = Paragraph("""
+        <b>Payment Instructions:</b><br />
+        Please make the payment to the following account:<br />
+        Bank: Sweethearts Bank<br />
+        Account Name: Love & Laughter Co.<br />
+        Account Number: 12345678<br />
+        Sort Code: 12-34-56<br />
+    """, styles['Notes'])
+    elements.append(payment_instructions)
+    elements.append(Spacer(1, 12))
+
+    qr_code_path = create_qr_code('https://heart-zeta-five.vercel.app/', size=40*mm)
+    qr_code = Image(qr_code_path, width=100, height=100)
+    elements.append(Spacer(1, 12))
+    elements.append(qr_code)
+
+    # Add notes
+    notes = Paragraph("""
+        <b>Notes:</b> Payment accepted in hugs, kisses, and happy moments. Thank you for all the wonderful times we've shared. Here's to many more! 💖
+    """, styles['Notes'])
+    elements.append(notes)
 
     # Add footnote
     if "footnote" in details:
